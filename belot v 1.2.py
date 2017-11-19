@@ -1356,7 +1356,7 @@ def prepare(current_contract):
         # get declarations if contract is different than No trumps
         # (in No trumps no declarations are valid)
         if current_contract[1] != "No trumps":  
-            player.get_announces()               
+            player.get_announces()                 
         
         if player == player1:   # set AI
             continue
@@ -1736,37 +1736,24 @@ def findOverlapSequence(player, care):
                 player.announces.remove(seq)
                 
 def getBelote(player, suit=None):
-    """ Check player hand to determine if there's still a viable belote in it;
-        return one of its cards, or None if the belote isn't viable anymore. You can pass
-        optional suit argument if you want to look for a specific belote. """
-    card1 = None
-    card2 = None
-
+    """ Return a card from the player's hand part of a valid belote.
+        ASSUME the player has at least one valid belote. 
+        suit -> String. Optional, if you want to announce a Belote from a specific suit. """
+   
     if not player.belotes:  # sanity check
         return None
     else:
         if suit:
-            anons_suit = suit
+            for card in player.hand:
+                if card.get_suit() == suit and \
+                card.get_rank() == "K" or card.get_rank() == "Q":
+                    return card
         else:
-            for belot in player.belotes:
-                anons_suit = belot.suit
-               
-        for card in player.hand:
-            if (card.get_rank() == "Q" or card.get_rank() == "K") and card.get_suit() == anons_suit:
-                card1 = card     # found the first card; attempt to find the second
-                for another_card in player.hand:
-                    if another_card == card1:
-                        continue
-                    if (another_card.get_rank() == "Q" or another_card.get_rank() == "K") and another_card.get_suit() == anons_suit:
-                        card2 = another_card   # found the second card; belote is still viable
-                        break
-                break    
-    
-        if card1 != None and card2 != None:
-            return card1
-        else:
-            return None
-                
+            for card in player.hand:
+                if card.get_suit() in player.belotes and \
+                card.get_rank() == "K" or card.get_rank() == "Q":
+                    return card          
+
 def announce(player):
     """ Аttempt to announce a sequence; you can do this only in the first round,
         and only if player from the other team hasn't announced a longer sequence already.
@@ -1809,12 +1796,12 @@ def announce(player):
                     player.announces.remove(anons)
                     game.gameMessage = MES.get_game_message("care", player.id)
                     
-def playerAnnounce(surface, cards):
+def playerAnnounce(surface):
     """ create a new window with buttons for player announces;
         in response to clicks attempt to announce """
     if not player1.announces:
         game.playerMessage = MES.get_player_message("noanons")
-    else:      
+    else:     # initialize new interface 
         seqText, seqTextRect = makeText(MES.make_interface("Seq"), FONT2, WHITE)
         doneButton, doneButtonRect = loadButton(MES.get_button(11), BLACK, BUTTON_IMAGES["small"], 190, 750)
         Button3, Rect3 = loadButton("3", BLACK, BUTTON_IMAGES["tiny"], 70, 700)
@@ -1833,85 +1820,73 @@ def playerAnnounce(surface, cards):
                     
                     if doneButtonRect.collidepoint(x, y):
                         done = True
-                    elif careRect.collidepoint(x, y):
-                        if player1.announces:                        
-                            for anons in player1.announces:
-                                if anons.vid == 'care':
+                    elif careRect.collidepoint(x, y):                                               
+                        for anons in player1.announces:
+                            if anons.vid == 'care':
+                                game.announces.append([player1, anons])
+                                player1.announces.remove(anons)
+                                game.gameMessage = MES.get_game_message("plcare")
+                            else:
+                                game.playerMessage = MES.get_player_message("nocare")#                        
+                    elif Rect3.collidepoint(x, y):                                              
+                        for anons in player1.announces:
+                            if anons.vid == 3:              # found a 3, attempt to declare it
+                                if not game.announces:      # if no announces, append automatically
                                     game.announces.append([player1, anons])
                                     player1.announces.remove(anons)
-                                    game.gameMessage = MES.get_game_message("plcare")
-                                else:
-                                    game.playerMessage = MES.get_player_message("nocare")
-                        else:
-                            game.playerMessage = MES.get_player_message("nocare")
-                    elif Rect3.collidepoint(x, y):
-                        if player1.announces:                        
-                            for anons in player1.announces:
-                                if anons.vid == 3:   # found a 3, attempt to declare it
-                                    if not game.announces:     # if no announces, append automatically
+                                    game.gameMessage = MES.get_game_message("plseq3")
+                                else:    
+                                    longer = False
+                                    for anons_made in game.announces[:]:      # search game.announces for longer sequences                         
+                                        if anons_made[0].team != 'Team 1' and \
+                                           (anons_made[1].vid == 4 or anons_made[1].vid == 5):
+                                            longer = True
+                                    if not longer:
                                         game.announces.append([player1, anons])
                                         player1.announces.remove(anons)
                                         game.gameMessage = MES.get_game_message("plseq3")
-                                    else:    
-                                        longer = False
-                                        for anons_made in game.announces[:]:      # search game.announces                          
-                                            if anons_made[0].team != 'Team 1' and \
-                                               (anons_made[1].vid == 4 or anons_made[1].vid == 5):
-                                                longer = True
-                                        if not longer:
-                                            game.announces.append([player1, anons])
-                                            player1.announces.remove(anons)
-                                            game.gameMessage = MES.get_game_message("plseq3")
-                                        else:
-                                            game.playerMessage = MES.get_player_message("longer")
-                                else:
-                                    game.playerMessage = MES.get_player_message("noseq3")
-                        else:
-                            game.playerMessage = MES.get_player_message("noseq3")
-                    elif Rect4.collidepoint(x, y):
-                        if player1.announces:
-                            for anons in player1.announces:
-                                if anons.vid == 4:
-                                    if not game.announces:     # if no announces, append automatically
-                                        game.announces.append([player1, anons])
-                                        player1.announces.remove(anons)
-                                        game.gameMessage = MES.get_game_message("plseq4") 
                                     else:
-                                        longer = False
-                                        for anons_made in game.announces:
-                                            if anons_made[1].vid == 3 and anons_made[0].team != 'Team 1':
-                                                game.announces.remove(anons_made)
-                                            if anons_made[0].team != 'Team 1' and anons_made[1].vid == 5:
-                                                longer = True
-                                        if not longer:
-                                            game.announces.append([player1, anons])
-                                            player1.announces.remove(anons)
-                                            game.gameMessage = MES.get_game_message("plseq4")
-                                        else:
-                                            game.playerMessage = MES.get_player_message("longer")
+                                        game.playerMessage = MES.get_player_message("longer")
+                            else:
+                                game.playerMessage = MES.get_player_message("noseq3")                        
+                    elif Rect4.collidepoint(x, y):                       
+                        for anons in player1.announces:
+                            if anons.vid == 4:
+                                if not game.announces:     
+                                    game.announces.append([player1, anons])
+                                    player1.announces.remove(anons)
+                                    game.gameMessage = MES.get_game_message("plseq4") 
                                 else:
-                                    game.playerMessage = MES.get_player_message("noseq4")
-                        else:
-                            game.playerMessage = MES.get_player_message("noseq4")
-                    elif Rect5.collidepoint(x, y):
-                        if player1.announces:
-                            for anons in player1.announces:
-                                if anons.vid >= 5:
-                                    if not game.announces:
+                                    longer = False
+                                    for anons_made in game.announces:
+                                        if anons_made[1].vid == 3 and anons_made[0].team != 'Team 1':
+                                            game.announces.remove(anons_made)
+                                        if anons_made[0].team != 'Team 1' and anons_made[1].vid == 5:
+                                            longer = True
+                                    if not longer:
                                         game.announces.append([player1, anons])
                                         player1.announces.remove(anons)
-                                    else:   # there's no longer sequence than 5, append it automatically and remove                                  
-                                        for anons_made in game.announces[:]:    #  shorter sequences by other team players
-                                            if anons_made[0].team != 'Team 1' and \
-                                               (anons_made[1].vid == 3 or anons_made[1].vid == 4):  
-                                                game.announces.remove(anons_made)
-                                        game.announces.append([player1, anons])   
-                                        player1.announces.remove(anons)          
-                                        game.gameMessage = MES.get_game_message("plseq5")
-                                else:
-                                    game.playerMessage = MES.get_player_message("noseq5")
-                        else:
-                            game.playerMessage = MES.get_player_message("noseq5")
+                                        game.gameMessage = MES.get_game_message("plseq4")
+                                    else:
+                                        game.playerMessage = MES.get_player_message("longer")
+                            else:
+                                game.playerMessage = MES.get_player_message("noseq4")                       
+                    elif Rect5.collidepoint(x, y):                      
+                        for anons in player1.announces:
+                            if anons.vid >= 5:
+                                if not game.announces:
+                                    game.announces.append([player1, anons])
+                                    player1.announces.remove(anons)
+                                else:                                        # there's no longer sequence than 5, append it automatically                                  
+                                    for anons_made in game.announces[:]:     # and remove shorter sequences by other team players
+                                        if anons_made[0].team != 'Team 1' and \
+                                           (anons_made[1].vid == 3 or anons_made[1].vid == 4):  
+                                            game.announces.remove(anons_made)
+                                    game.announces.append([player1, anons])   
+                                    player1.announces.remove(anons)          
+                                    game.gameMessage = MES.get_game_message("plseq5")
+                            else:
+                                game.playerMessage = MES.get_player_message("noseq5")
                 
             surface.fill(BGCOLOR)
             display()
@@ -2110,7 +2085,7 @@ def playRound(surface):
                                 # clicked on the Declaration button
                         elif anonsButtonRect.collidepoint(mousex, mousey) and \
                                  (rund == 1 and game.contract[1] != "No trumps"):
-                            playerAnnounce(SCREEN, playhand)
+                            playerAnnounce(SCREEN)
                                                                 
                     if card_clicked:
                         # process the card click                        
@@ -2155,16 +2130,9 @@ def playRound(surface):
                                                 continue
                         # do the actual card processing 
                         if player_card.get_rank() == "Q" or player_card.get_rank() == "K":  # check for belote
-#                            if player1.belotes:
-#                                if getBelote(player1, player_card.get_suit()) and \
-#                                    required == player_card.get_suit():
-                            if player_card.get_suit() in player1.belotes and required == player_card.get_suit():
-                                
+                            if player_card.get_suit() in player1.belotes and required == player_card.get_suit():                                
                                 player_pos, play_card = player1.announceBelote(player_card)
-                                playhand[player1] = player_card
-#                                else:                                    
-#                                    playhand[player1] = player_card
-#                                    player_pos, play_card = player1.play_card(getCardClicked(mousex))
+                                playhand[player1] = player_card#                               
                             else:
                                 playhand[player1] = player_card
                                 player_pos, play_card = player1.play_card(getCardClicked(mousex))
@@ -2326,12 +2294,12 @@ def startBidding(surface, order):
     contra = False               # flags for contra and re - contra games
     reContra = False
     endBid = [False, False, False, False]   # keep track of who made a bid already; this turns True if
-                                        # a player either passes or makes a higher bid; in the second case,
-                                        # all other players turn False and have to bid again
-    highlight = False
-    stillImages = []
+                                            # a player either passes or makes a higher bid; in the second case,
+                                            # all other players turn False and have to bid again
+    highlight = False           # some other flags    
     done = False
     first_iter = True
+    stillImages = []            # initialize a list of images to draw for animation purposes
         
     # deal cards according to turn order
     for player in turnOrder:
@@ -2415,6 +2383,7 @@ def startBidding(surface, order):
                                                 endBid = [False, False, False, False] 
                                                 endBid[turnOrder.index(player1)] = True    # end the loop
                                                 game.bidMessage = MES.get_bid_message("plraise")
+                                                # create Animations
                                                 if BID_ORDER.index(game.contract[1]) < 5:
                                                     grow1 = Animation(SUIT_IMAGES[game.contract[1]], [CENTER[0] - 50,
                                                                                                       CENTER[1] - 50])
@@ -2469,7 +2438,8 @@ def startBidding(surface, order):
                 first_iter = False
     
 def terminateBidding(winning_contract):
-    """ terminate the bidding phase, set variables accordingly """
+    """ Terminate the bidding phase, set variables accordingly.
+        winning_contract -> list of [Hand, String]"""
     global trump
     if winning_contract[1] == "pass":
         # if it was a pass game, change who's first, collect the cards and restart bidding         
@@ -2498,7 +2468,7 @@ def terminateBidding(winning_contract):
         game.state = 2
         
 def cleanAll():
-    """ collect the cards, cut them, reset all variables for a new game """
+    """ Collect the cards, cut them, reset all variables for a new game """
     global trump, rund
     for player in turnOrder:
         if player.winnings:
@@ -2527,7 +2497,8 @@ def cleanAll():
     game.state = 1
     
 def welcome():
-    """ display the welcome screen """
+    """ Display the welcome screen in the beginning of the game.
+        Select language for the game interface. """
     global MES
     width = 700
     height = 500
@@ -2566,7 +2537,8 @@ def welcome():
         pygame.display.update()     
     
 def gameOver(team):
-    """ display the end of game dialog window """
+    """ Display the end of game dialog window, according to which team won.
+        Team -> String"""
     result = ""
     if team == 'Team 1':
         game.team1Games += 1
@@ -2574,6 +2546,7 @@ def gameOver(team):
     elif team == "Team 2":
         game.team2Games += 1
         result = MES.game_over_mes("Team 2", game)
+    # create interface objects    
     yesButton, yesButtonRect = loadButton(MES._end_messages["ya"], BLACK, BUTTON_IMAGES["small"], 550, 500)
     quitButton, quitButtonRect = loadButton(MES._end_messages["no"], BLACK, BUTTON_IMAGES["medium"], 650, 500)
     gameOver, gameOverRect = makeText("GAME OVER!", FONT5, RED)
@@ -2613,6 +2586,8 @@ def gameOver(team):
         FPSCLOCK.tick(FPS)
 
 def makeText(text, font, color):
+    """ Create a pygame text object in the given font and color.
+        Return a tuple of the object and its rectangle. """
     textSurf = font.render(text, True, color)
     textRect = textSurf.get_rect()
     textRect.centerx = textRect.width // 2
@@ -2620,6 +2595,9 @@ def makeText(text, font, color):
     return (textSurf, textRect)
 
 def loadButton(text, textColor, image, top, left):
+    """ Create a Pygame Surface object and Rectangle object with the given top, left coords.
+        Draw the given image and text onto the surface.
+        Returns a tuple of the image surface and rectancle object"""
     textSurf, textRect = makeText(text, FONT1, textColor)
     imageRect = image.get_rect()
     imageRect.center = (imageRect[2] // 2, imageRect[3] // 2)
@@ -2677,7 +2655,8 @@ def drawAnimation(animation_list, images_list, button_list=None):
     
 def drawAnons(player):
     """ Check game.announces for announces of the given player;
-        return them as a string; if no announces - return None """
+        return them as a string; if no announces - return None.
+        player -> Hand """
     anonsList = []
     result = ""
     for anons in game.announces:   #check anonses made and sift out the ones the player made
