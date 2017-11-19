@@ -1752,30 +1752,8 @@ def getBelote(player, suit=None):
             for card in player.hand:
                 if card.get_suit() in player.belotes and \
                 card.get_rank() == "K" or card.get_rank() == "Q":
-                    return card              
-            
-            
-#            anons_suit = suit
-#        else:
-#            for belot in player.belotes:
-#                anons_suit = belot.suit
-#               
-#        for card in player.hand:
-#            if (card.get_rank() == "Q" or card.get_rank() == "K") and card.get_suit() == anons_suit:
-#                card1 = card     # found the first card; attempt to find the second
-#                for another_card in player.hand:
-#                    if another_card == card1:
-#                        continue
-#                    if (another_card.get_rank() == "Q" or another_card.get_rank() == "K") and another_card.get_suit() == anons_suit:
-#                        card2 = another_card   # found the second card; belote is still viable
-#                        break
-#                break    
-#    
-#        if card1 != None and card2 != None:
-#            return card1
-#        else:
-#            return None
-                
+                    return card          
+
 def announce(player):
     """ Аttempt to announce a sequence; you can do this only in the first round,
         and only if player from the other team hasn't announced a longer sequence already.
